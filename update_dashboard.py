@@ -323,7 +323,7 @@ def main():
 
     # 从环境变量或命令行读取配置
     feishu_webhook = os.environ.get("FEISHU_WEBHOOK", "")
-    notify_threshold = float(os.environ.get("NOTIFY_THRESHOLD", "2.5"))
+    notify_threshold = float(os.environ.get("NOTIFY_THRESHOLD") or "2.5")
 
     # 解析命令行参数（覆盖环境变量）
     i = 1
