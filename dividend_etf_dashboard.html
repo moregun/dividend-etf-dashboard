@@ -278,10 +278,13 @@ tr:hover td{background:rgba(59,130,246,.04)}
     <span id="feishuBadge" class="monitor-badge monitor-off">● 未配置</span>
   </div>
   <div class="feishu-sub">利差/分位/股息率/估值达到设定阈值时，自动推送飞书消息</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-bottom:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-bottom:12px">
     <div class="form-group">
       <label>🔗 飞书 Webhook 地址</label>
-      <input type="text" id="feishuWebhookInput" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..." value="https://open.feishu.cn/open-apis/bot/v2/hook/d27f80b4-39ac-4cda-9a17-28cc79109a5d">
+      <div style="display:flex;gap:4px;align-items:center">
+        <input type="password" id="feishuWebhookInput" placeholder="粘贴 Webhook 地址..." style="flex:1">
+        <button onclick="toggleWebhookVisibility()" style="background:var(--card2);border:1px solid var(--border);color:var(--sub);padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer">👁</button>
+      </div>
     </div>
     <div class="form-group">
       <label>⚡ 触发阈值（利差 ≥ X%）</label>
@@ -296,7 +299,7 @@ tr:hover td{background:rgba(59,130,246,.04)}
     <span style="font-size:12px;color:var(--sub)">自动监测：</span>
     <button class="btn btn-feishu" id="feishuMonitorBtn" onclick="toggleFeishuMonitor()">▶ 开启</button>
     <div style="font-size:11px;color:var(--sub)">间隔：<select id="feishuIntervalSelect" style="background:#0b0e14;border:1px solid var(--border);color:var(--text);padding:2px 6px;border-radius:4px;font-size:11px">
-      <option value="30">30分</option><option value="60" selected>1时</option><option value="120">2时</option><option value="240">4时</option>
+      <option value="60" selected>1小时</option><option value="1440">1天</option><option value="10080">1周</option>
     </select></div>
     <div style="font-size:11px;color:var(--sub)" id="feishuLastCheckInfo">上次：—</div>
     <div style="font-size:11px;color:var(--sub)" id="feishuNextCheckInfo">下次：—</div>
@@ -764,7 +767,11 @@ function initFeishuConfig() {
   if (saved) {
     try {
       const cfg = JSON.parse(saved);
-      if (cfg.webhook) document.getElementById('feishuWebhookInput').value = cfg.webhook;
+      if (cfg.webhook) {
+        const el = document.getElementById('feishuWebhookInput');
+        el.value = cfg.webhook;
+        el.placeholder = '已配置（点击👁查看）';
+      }
       if (cfg.threshold) document.getElementById('feishuThresholdInput').value = cfg.threshold;
       if (cfg.interval) document.getElementById('feishuIntervalSelect').value = cfg.interval;
       document.getElementById('feishuBadge').textContent = '● 已配置';
@@ -773,6 +780,11 @@ function initFeishuConfig() {
       if (cfg.autoMonitor) setTimeout(() => startFeishuMonitor(), 500);
     } catch(e) {}
   }
+}
+
+function toggleWebhookVisibility() {
+  const el = document.getElementById('feishuWebhookInput');
+  el.type = el.type === 'password' ? 'text' : 'password';
 }
 
 function saveFeishuConfig() {
