@@ -76,7 +76,7 @@ cd dividend-etf-dashboard
 
 | Secret 名称 | 说明 | 示例值 |
 |-------------|------|---------|
-| `FEISHU_WEBHOOK` | 飞书自定义机器人 Webhook 后缀 | `d27f80b4-39ac-4cda-9a17-28cc79109a5d` |
+| `FEISHU_WEBHOOK` | 飞书自定义机器人 Webhook 后缀 | `d27f80b4-39ac-4cda-9a17-28cc7910****` |
 | `NOTIFY_THRESHOLD` | 触发飞书通知的利差阈值（可选，默认2.5） | `2.5` |
 
 > 飞书 Webhook 完整地址格式：`https://open.feishu.cn/open-apis/bot/v2/hook/{你的Webhook后缀}`
