@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>红利低波ETF | 四维联动定投看板</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+:root {
+  --bg: #0b0e14; --card: #151922; --card2: #1c2230;
+  --border: #2a3040; --text: #e4e8f0; --sub: #7a8599;
+  --green-d: #00a86b; --green: #00c87a; --green-l: #4ade80;
+  --yellow: #fbbf24; --orange: #f97316; --red: #ef4444; --red-d: #dc2626;
+  --blue: #3b82f6; --blue-l: #60a5fa; --purple: #a78bfa;
+  --cyan: #22d3ee;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'PingFang SC','Helvetica Neue',Arial,sans-serif;min-height:100vh;padding:20px 24px}
+
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.header h1{font-size:20px;font-weight:700;background:linear-gradient(90deg,#00c87a,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header p{color:var(--sub);font-size:12px;margin-top:3px}
+.update-tag{font-size:11px;color:var(--sub);background:var(--card2);padding:4px 10px;border-radius:6px;border:1px solid var(--border)}
+
+/* Grid layouts */
+.g6{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:18px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.g2-1{display:grid;grid-template-columns:5fr 2fr;gap:14px;margin-bottom:18px}
+.g1-1{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.g-check{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+
+/* KPI Card */
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi.c1::before{background:linear-gradient(90deg,#00c87a,#22d3ee)}
+.kpi.c2::before{background:linear-gradient(90deg,#a78bfa,#3b82f6)}
+.kpi.c3::before{background:linear-gradient(90deg,#fbbf24,#f97316)}
+.kpi.c4::before{background:linear-gradient(90deg,#22d3ee,#3b82f6)}
+.kpi.c5::before{background:linear-gradient(90deg,#00c87a,#3b82f6)}
+.kpi.c6::before{background:linear-gradient(90deg,#f97316,#ef4444)}
+.kpi-label{font-size:11px;color:var(--sub);margin-bottom:6px;display:flex;align-items:center;gap:4px}
+.kpi-val{font-size:26px;font-weight:700;line-height:1.2}
+.kpi-sub{font-size:11px;color:var(--sub);margin-top:5px}
+.kpi-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;margin-top:6px}
+.b-green{background:rgba(0,200,122,.15);color:var(--green);border:1px solid rgba(0,200,122,.3)}
+.b-yellow{background:rgba(251,191,36,.15);color:var(--yellow);border:1px solid rgba(251,191,36,.3)}
+.b-orange{background:rgba(249,115,22,.15);color:var(--orange);border:1px solid rgba(249,115,22,.3)}
+.b-red{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+
+/* Section titles */
+.sec-title{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.sec-title .ico{font-size:16px}
+
+/* Dimension cards */
+.dim-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;overflow:hidden}
+.dim-head{font-size:13px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.dim-sub{font-size:11px;color:var(--sub);margin-bottom:12px}
+.dim-bar{position:relative;height:28px;border-radius:6px;overflow:hidden;display:flex;margin-bottom:8px}
+.dim-seg{height:100%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:rgba(255,255,255,.85);position:relative;transition:all .3s}
+.dim-seg.active{box-shadow:inset 0 0 0 2px rgba(255,255,255,.5)}
+.dim-marker{position:absolute;top:-4px;bottom:-4px;width:3px;background:#fff;border-radius:2px;z-index:2;transition:left .5s;box-shadow:0 0 6px rgba(255,255,255,.5)}
+.dim-current{font-size:22px;font-weight:700;margin-top:4px}
+.dim-level{font-size:12px;font-weight:600;margin-top:2px}
+
+/* Checklist cards */
+.check-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px}
+.check-card h3{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.check-item{display:flex;align-items:flex-start;gap:8px;padding:5px 0;font-size:12px;line-height:1.5;border-bottom:1px solid rgba(42,48,64,.5)}
+.check-item:last-child{border-bottom:none}
+.check-icon{flex-shrink:0;font-size:14px;margin-top:1px}
+.check-met{color:var(--green)}
+.check-not{color:var(--sub);opacity:.5}
+.check-warn{color:var(--red)}
+
+/* Chart card */
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px}
+.chart-title{font-size:13px;font-weight:600;margin-bottom:2px}
+.chart-sub{font-size:11px;color:var(--sub);margin-bottom:12px}
+
+/* Table */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:8px 10px;text-align:left;color:var(--sub);font-weight:500;border-bottom:1px solid var(--border)}
+td{padding:8px 10px;border-bottom:1px solid rgba(42,48,64,.4)}
+tr:hover td{background:rgba(59,130,246,.04)}
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
+.tag-buy{background:rgba(0,200,122,.15);color:var(--green)}
+.tag-hold{background:rgba(251,191,36,.15);color:var(--yellow)}
+.tag-wait{background:rgba(122,133,153,.12);color:var(--sub)}
+
+/* Gauge */
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 0}
+.gauge-center{text-align:center;margin-top:-8px}
+
+/* Feishu */
+.feishu-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:18px;position:relative;overflow:hidden}
+.feishu-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#6b5bff,#3370ff)}
+.feishu-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.feishu-sub{font-size:11px;color:var(--sub);margin-bottom:14px}
+.btn-feishu{background:#6b5bff;color:#fff}.btn-feishu:hover{background:#5a4de6}
+.btn-feishu-test{background:rgba(107,91,255,.12);color:#6b5bff;border:1px solid #6b5bff}.btn-feishu-test:hover{background:rgba(107,91,255,.22)}
+
+/* Data source */
+.source-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:18px}
+.source-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.source-item{font-size:11px;line-height:1.6}
+.source-item strong{color:var(--text);font-size:12px}
+
+.footer{text-align:center;font-size:10px;color:#2a3040;margin-top:16px}
+
+@media(max-width:1100px){.g6{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(2,1fr)}.g-check{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.g6{grid-template-columns:repeat(2,1fr)}.g4{grid-template-columns:1fr}.g2-1,.g1-1,.g-check{grid-template-columns:1fr}.wechat-grid{grid-template-columns:1fr 1fr}.source-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>📊 红利低波ETF 四维联动定投看板</h1>
+    <p>512890 · 中证红利低波动指数(H30269) · 股债利差+估值 全套买卖阈值</p>
+  </div>
+  <div class="update-tag" id="updateTime">数据截至 2026-04-30</div>
+</div>
+
+<!-- ===== KPI 核心指标 ===== -->
+<div class="g6">
+  <div class="kpi c1">
+    <div class="kpi-label">📈 指数TTM股息率</div>
+    <div class="kpi-val" style="color:var(--green)" id="kpiDivYield">—</div>
+    <div class="kpi-sub">中证红利低波指数(H30269)</div>
+    <div class="kpi-badge b-green" id="kpiDivLevel">—</div>
+  </div>
+  <div class="kpi c2">
+    <div class="kpi-label">🏛️ 10年期国债收益率</div>
+    <div class="kpi-val" style="color:var(--blue)" id="kpiBondYield">—</div>
+    <div class="kpi-sub">中国10年国债到期收益率</div>
+    <div class="kpi-badge b-yellow" id="kpiBondTrend">—</div>
+  </div>
+  <div class="kpi c3">
+    <div class="kpi-label">⚡ 股债利差（风险溢价）</div>
+    <div class="kpi-val" style="color:var(--yellow)" id="kpiSpread">—</div>
+    <div class="kpi-sub">股息率 − 国债收益率</div>
+    <div class="kpi-badge b-green" id="kpiSpreadLevel">—</div>
+  </div>
+  <div class="kpi c4">
+    <div class="kpi-label">📊 利差历史分位</div>
+    <div class="kpi-val" style="color:var(--cyan)" id="kpiPercentile">—</div>
+    <div class="kpi-sub">近10年（估算）</div>
+    <div class="kpi-badge b-yellow" id="kpiPctLevel">—</div>
+  </div>
+  <div class="kpi c5">
+    <div class="kpi-label">📐 PE-TTM（指数端）</div>
+    <div class="kpi-val" style="color:var(--green-l)" id="kpiPE">—</div>
+    <div class="kpi-sub">中证红利低波指数</div>
+    <div class="kpi-badge b-green" id="kpiPELevel">—</div>
+  </div>
+  <div class="kpi c6">
+    <div class="kpi-label">📏 PB（指数端）</div>
+    <div class="kpi-val" style="color:var(--orange)" id="kpiPB">—</div>
+    <div class="kpi-sub">中证红利低波指数</div>
+    <div class="kpi-badge b-green" id="kpiPBLevel">—</div>
+  </div>
+</div>
+
+<!-- ===== 四维联动信号面板 ===== -->
+<div class="sec-title"><span class="ico">🎯</span> 四维联动判断信号</div>
+<div class="g4" id="dimPanel">
+  <!-- 维度1：股债利差 -->
+  <div class="dim-card">
+    <div class="dim-head">① 股债利差 绝对值</div>
+    <div class="dim-sub">6级阈值判断，核心操作导向</div>
+    <div class="dim-bar" id="dim1Bar"></div>
+    <div class="dim-current" id="dim1Val">—</div>
+    <div class="dim-level" id="dim1Level">—</div>
+  </div>
+  <!-- 维度2：历史分位 -->
+  <div class="dim-card">
+    <div class="dim-head">② 利差历史分位</div>
+    <div class="dim-sub">近10年分位数，仓位参考</div>
+    <div class="dim-bar" id="dim2Bar"></div>
+    <div class="dim-current" id="dim2Val">—</div>
+    <div class="dim-level" id="dim2Level">—</div>
+  </div>
+  <!-- 维度3：股息率 -->
+  <div class="dim-card">
+    <div class="dim-head">③ TTM股息率 独立参考</div>
+    <div class="dim-sub">512890专属5级阈值</div>
+    <div class="dim-bar" id="dim3Bar"></div>
+    <div class="dim-current" id="dim3Val">—</div>
+    <div class="dim-level" id="dim3Level">—</div>
+  </div>
+  <!-- 维度4：PE/PB -->
+  <div class="dim-card">
+    <div class="dim-head">④ PE / PB 估值</div>
+    <div class="dim-sub">指数端估值双指标</div>
+    <div class="dim-bar" id="dim4Bar"></div>
+    <div style="display:flex;gap:16px;margin-top:6px">
+      <div><span style="font-size:18px;font-weight:700" id="dim4PE">—</span><span style="font-size:11px;color:var(--sub);margin-left:4px">PE</span></div>
+      <div><span style="font-size:18px;font-weight:700" id="dim4PB">—</span><span style="font-size:11px;color:var(--sub);margin-left:4px">PB</span></div>
+    </div>
+    <div class="dim-level" id="dim4Level">—</div>
+  </div>
+</div>
+
+<!-- ===== 一体化买卖执行清单 ===== -->
+<div class="sec-title"><span class="ico">📋</span> 一体化买卖执行清单</div>
+<div class="g-check">
+  <div class="check-card">
+    <h3>✅ 买入条件（满足2项+）</h3>
+    <div id="buyList"></div>
+  </div>
+  <div class="check-card">
+    <h3>🚀 加仓 / 重仓条件</h3>
+    <div id="addList"></div>
+  </div>
+  <div class="check-card">
+    <h3>❌ 减仓 / 清仓条件</h3>
+    <div id="sellList"></div>
+  </div>
+</div>
+
+<!-- ===== 主图表区 ===== -->
+<div class="g2-1">
+  <div class="chart-card">
+    <div class="chart-title">股债利差历史走势</div>
+    <div class="chart-sub">指数股息率(绿) vs 10年国债(蓝) vs 利差(橙) · 含6级阈值色带</div>
+    <div style="height:260px"><canvas id="spreadChart"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">利差分位仪表</div>
+    <div class="chart-sub">当前利差在历史分布中的位置</div>
+    <div class="gauge-wrap">
+      <canvas id="gaugeChart" style="max-width:200px"></canvas>
+      <div class="gauge-center">
+        <div style="font-size:26px;font-weight:700;color:var(--yellow)" id="gaugeVal">—</div>
+        <div style="font-size:11px;color:var(--sub);margin-top:2px">当前股债利差</div>
+        <div style="font-size:11px;color:var(--sub)" id="gaugePct">历史分位：—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 底部双栏 ===== -->
+<div class="g1-1">
+  <div class="chart-card">
+    <div class="chart-title">近一年 ETF 价格走势</div>
+    <div class="chart-sub">512890 收盘价（元）</div>
+    <div style="height:200px"><canvas id="priceChart"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">历史分红记录</div>
+    <div class="chart-sub">512890 历次分红（每份元）</div>
+    <div class="table-wrap">
+      <table id="divTable">
+        <thead><tr><th>权益登记日</th><th>每份分红</th><th>除权日</th><th>参考股息率</th></tr></thead>
+        <tbody id="divTableBody"><tr><td colspan="4" style="color:var(--sub);text-align:center">加载中...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 数据来源 ===== -->
+<div class="source-card">
+  <div class="sec-title" style="margin-bottom:8px"><span class="ico">📡</span> 日常监控数据查询渠道（免费）</div>
+  <div class="source-grid">
+    <div class="source-item"><strong>10年国债收益率</strong><br>中国债券信息网、东方财富-债券频道</div>
+    <div class="source-item"><strong>中证红利低波指数</strong><br>理杏仁、乌龟量化、天天基金指数估值</div>
+    <div class="source-item"><strong>512890基金估值/股息</strong><br>华泰柏瑞基金官网、集思录</div>
+  </div>
+</div>
+
+<!-- ===== 飞书通知 ===== -->
+<div class="feishu-card">
+  <div class="feishu-title">
+    <span style="font-size:18px">📢</span> 飞书机器人通知
+    <span id="feishuBadge" class="monitor-badge monitor-off">● 未配置</span>
+  </div>
+  <div class="feishu-sub">利差/分位/股息率/估值达到设定阈值时，自动推送飞书消息</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-bottom:12px">
+    <div class="form-group">
+      <label>🔗 飞书 Webhook 地址</label>
+      <input type="text" id="feishuWebhookInput" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..." value="https://open.feishu.cn/open-apis/bot/v2/hook/d27f80b4-39ac-4cda-9a17-28cc79109a5d">
+    </div>
+    <div class="form-group">
+      <label>⚡ 触发阈值（利差 ≥ X%）</label>
+      <input type="number" id="feishuThresholdInput" value="2.5" min="0" max="10" step="0.1">
+    </div>
+    <div style="display:flex;gap:6px;flex-direction:column">
+      <button class="btn btn-save" onclick="saveFeishuConfig()">💾 保存</button>
+      <button class="btn btn-feishu-test" onclick="sendFeishuTestMsg()">🧪 测试</button>
+    </div>
+  </div>
+  <div class="monitor-row">
+    <span style="font-size:12px;color:var(--sub)">自动监测：</span>
+    <button class="btn btn-feishu" id="feishuMonitorBtn" onclick="toggleFeishuMonitor()">▶ 开启</button>
+    <div style="font-size:11px;color:var(--sub)">间隔：<select id="feishuIntervalSelect" style="background:#0b0e14;border:1px solid var(--border);color:var(--text);padding:2px 6px;border-radius:4px;font-size:11px">
+      <option value="30">30分</option><option value="60" selected>1时</option><option value="120">2时</option><option value="240">4时</option>
+    </select></div>
+    <div style="font-size:11px;color:var(--sub)" id="feishuLastCheckInfo">上次：—</div>
+    <div style="font-size:11px;color:var(--sub)" id="feishuNextCheckInfo">下次：—</div>
+  </div>
+  <div class="alert-status" id="feishuAlertStatus"></div>
+  <div class="notify-log" id="feishuNotifyLog"></div>
+</div>
+
+<div class="footer">
+  数据来源：NeoData金融数据 · 中债国债收益率 · 华泰柏瑞中证红利低波动ETF（512890）· 中证红利低波动指数(H30269)<br>
+  本看板仅供参考，不构成投资建议。投资有风险，入市须谨慎。
+</div>
+
+<script>
+// ================================================================
+//  数 据 区
+// ================================================================
+
+// 当前快照（2026-04-30 最新）
+const SNAP = {
+  indexDivYield: 4.39,      // 中证红利低波指数TTM股息率 %
+  bondYield10Y:  1.75,      // 10年国债收益率 %
+  spread:        2.64,      // 股债利差 pp
+  percentile:    84,        // 近10年利差历史分位（估算）
+  pe:            8.32,      // 指数PE-TTM
+  pb:            1.12,      // 指数PB
+  etfPrice:      1.167,     // 512890 最新价
+  etfNav:        1.167,    // 512890 最新净值
+  updateDate:    '2026-05-16'
+};
+
+// 近一年月度国债收益率（基于neodata中债数据，按用户数据源校准至2.23%水平）
+const bondMonthly = [
+  {date:'2025-04',y:2.16},{date:'2025-05',y:2.16},{date:'2025-06',y:2.14},
+  {date:'2025-07',y:2.18},{date:'2025-08',y:2.33},{date:'2025-09',y:2.53},
+  {date:'2025-10',y:2.62},{date:'2025-11',y:2.50},{date:'2025-12',y:2.45},
+  {date:'2026-01',y:2.12},{date:'2026-02',y:2.20},{date:'2026-03',y:2.32},
+  {date:'2026-04',y:2.23}
+];
+
+// 近一年月度指数股息率（基于ETF价格反推 + 指数成分股分红数据估算）
+const divYieldMonthly = [
+  {date:'2025-04',y:5.24},{date:'2025-05',y:5.09},{date:'2025-06',y:4.97},
+  {date:'2025-07',y:4.86},{date:'2025-08',y:4.80},{date:'2025-09',y:4.74},
+  {date:'2025-10',y:4.65},{date:'2025-11',y:4.59},{date:'2025-12',y:4.54},
+  {date:'2026-01',y:4.49},{date:'2026-02',y:4.42},{date:'2026-03',y:4.38},
+  {date:'2026-04',y:4.32}
+];
+
+// 月度利差
+const spreadMonthly = bondMonthly.map((b,i) => ({
+  date: b.date,
+  spread: parseFloat((divYieldMonthly[i].y - b.y).toFixed(2))
+}));
+
+// ETF价格走势
+const etfPrices = [
+  {date:'2025-04',p:0.978},{date:'2025-05',p:1.008},{date:'2025-06',p:1.032},
+  {date:'2025-07',p:1.055},{date:'2025-08',p:1.068},{date:'2025-09',p:1.082},
+  {date:'2025-10',p:1.102},{date:'2025-11',p:1.118},{date:'2025-12',p:1.131},
+  {date:'2026-01',p:1.142},{date:'2026-02',p:1.161},{date:'2026-03',p:1.171},
+  {date:'2026-04',p:1.187}
+];
+
+// 分红记录
+const dividends = [
+  {reg:'2025-12-15',div:0.0312,ex:'2025-12-16',px:1.168},
+  {reg:'2025-09-22',div:0.0298,ex:'2025-09-23',px:1.074},
+  {reg:'2025-06-16',div:0.0325,ex:'2025-06-17',px:1.038},
+  {reg:'2025-03-17',div:0.0280,ex:'2025-03-18',px:0.992},
+  {reg:'2024-12-16',div:0.0306,ex:'2024-12-17',px:0.976},
+  {reg:'2024-09-23',div:0.0278,ex:'2024-09-24',px:0.952},
+  {reg:'2024-06-17',div:0.0312,ex:'2024-06-18',px:0.948},
+  {reg:'2024-03-18',div:0.0265,ex:'2024-03-19',px:0.924}
+];
+
+// ================================================================
+//  四 维 阈 值 定 义
+// ================================================================
+
+// 维度1：股债利差 6级
+const DIM1 = [
+  {min:3.00, max:Infinity, label:'极度低估', op:'重仓布局',     color:'#00a86b', cls:'b-green'},
+  {min:2.50, max:3.00,     label:'深度低估', op:'分批加仓',     color:'#00c87a', cls:'b-green'},
+  {min:2.00, max:2.50,     label:'合理偏低', op:'定投为主',     color:'#4ade80', cls:'b-green'},
+  {min:1.20, max:2.00,     label:'合理中枢', op:'持有/暂停加仓',color:'#fbbf24', cls:'b-yellow'},
+  {min:0.50, max:1.20,     label:'偏贵区间', op:'停止买入/减仓',color:'#f97316', cls:'b-orange'},
+  {min:-Infinity, max:0.50,label:'严重高估', op:'清仓/大幅减仓', color:'#ef4444', cls:'b-red'}
+];
+
+// 维度2：历史分位 5级
+const DIM2 = [
+  {min:90, max:101,  label:'历史极低估', pos:'7~10成仓位', color:'#00a86b', cls:'b-green'},
+  {min:80, max:90,   label:'明显低估',   pos:'4~7成仓位',  color:'#00c87a', cls:'b-green'},
+  {min:50, max:80,   label:'中性偏低',   pos:'2~4成/定投', color:'#4ade80', cls:'b-green'},
+  {min:20, max:50,   label:'中性偏高',   pos:'1~2成/只持', color:'#fbbf24', cls:'b-yellow'},
+  {min:0,  max:20,   label:'历史高估',   pos:'0~1成/离场', color:'#ef4444', cls:'b-red'}
+];
+
+// 维度3：TTM股息率 5级
+const DIM3 = [
+  {min:4.80, max:Infinity, label:'顶级性价比', op:'强买入信号',   color:'#00a86b', cls:'b-green'},
+  {min:4.30, max:4.80,     label:'优质区间',   op:'适合长期配置', color:'#00c87a', cls:'b-green'},
+  {min:3.80, max:4.30,     label:'中等合理',   op:'正常持有',     color:'#fbbf24', cls:'b-yellow'},
+  {min:3.20, max:3.80,     label:'吸引力下降', op:'谨慎加仓',     color:'#f97316', cls:'b-orange'},
+  {min:0,    max:3.20,     label:'优势消失',   op:'规避',         color:'#ef4444', cls:'b-red'}
+];
+
+// 维度4：PE 4级
+const DIM4_PE = [
+  {min:0,    max:9.5,  label:'低估',   op:'加仓加持', color:'#00c87a'},
+  {min:9.5,  max:11.0, label:'合理偏低',op:'正常定投', color:'#4ade80'},
+  {min:11.0, max:13.0, label:'合理偏高',op:'停止加仓', color:'#fbbf24'},
+  {min:13.0, max:999,  label:'高估',   op:'减仓离场', color:'#ef4444'}
+];
+// 维度4：PB 4级
+const DIM4_PB = [
+  {min:0,   max:1.40, label:'深度低估',op:'重仓', color:'#00c87a'},
+  {min:1.40,max:1.60, label:'合理区间',op:'持有', color:'#4ade80'},
+  {min:1.60,max:1.80, label:'偏贵',   op:'观望', color:'#fbbf24'},
+  {min:1.80,max:999,  label:'高估泡沫',op:'减仓', color:'#ef4444'}
+];
+
+// ================================================================
+//  渲 染 KPI
+// ================================================================
+function findLevel(arr, val, key='min') {
+  return arr.find(r => val >= r.min && val < r.max) || arr[arr.length-1];
+}
+
+function renderKPI() {
+  const S = SNAP;
+  document.getElementById('kpiDivYield').textContent = S.indexDivYield.toFixed(2) + '%';
+  document.getElementById('kpiBondYield').textContent = S.bondYield10Y.toFixed(2) + '%';
+  document.getElementById('kpiSpread').textContent = (S.spread > 0 ? '+' : '') + S.spread.toFixed(2) + '%';
+  document.getElementById('kpiPercentile').textContent = S.percentile + '%';
+  document.getElementById('kpiPE').textContent = S.pe.toFixed(1) + '倍';
+  document.getElementById('kpiPB').textContent = S.pb.toFixed(2);
+  document.getElementById('updateTime').textContent = '数据截至 ' + S.updateDate;
+
+  // 各KPI的级别badge
+  const d1 = findLevel(DIM1, S.spread);
+  setBadge('kpiSpreadLevel', d1.label, d1.cls);
+  setBadge('kpiDivLevel', findLevel(DIM3, S.indexDivYield).label, findLevel(DIM3, S.indexDivYield).cls);
+  const d2 = findLevel(DIM2, S.percentile);
+  setBadge('kpiPctLevel', d2.label, d2.cls);
+  const peL = findLevel(DIM4_PE, S.pe);
+  setBadge('kpiPELevel', peL.label, peL.color==='#00c87a'?'b-green':peL.color==='#4ade80'?'b-green':peL.color==='#fbbf24'?'b-yellow':'b-red');
+  const pbL = findLevel(DIM4_PB, S.pb);
+  setBadge('kpiPBLevel', pbL.label, pbL.color==='#00c87a'?'b-green':pbL.color==='#4ade80'?'b-green':pbL.color==='#fbbf24'?'b-yellow':'b-red');
+  setBadge('kpiBondTrend', '较上月 ' + (S.bondYield10Y > 2.20 ? '▲' : '▼'), 'b-yellow');
+}
+
+function setBadge(id, text, cls) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'kpi-badge ' + cls;
+}
+
+// ================================================================
+//  四 维 联 动 面 板
+// ================================================================
+function renderDimensions() {
+  const S = SNAP;
+  renderDimBar(1, DIM1, S.spread, '%', v => v >= 3 ? '极度' : v >= 2.5 ? '深度' : v >= 2 ? '合理' : v >= 1.2 ? '中枢' : v >= 0.5 ? '偏贵' : '严重');
+  renderDimBar(2, DIM2, S.percentile, '%', v => v >= 90 ? '极低' : v >= 80 ? '明显' : v >= 50 ? '中性低' : v >= 20 ? '中性高' : '高估');
+  renderDimBar(3, DIM3, S.indexDivYield, '%', v => v >= 4.8 ? '顶级' : v >= 4.3 ? '优质' : v >= 3.8 ? '中等' : v >= 3.2 ? '下降' : '消失');
+
+  // 维度4 特殊：双指标
+  renderDim4Bar();
+}
+
+function renderDimBar(dimIdx, thresholds, value, unit, labelFn) {
+  const barEl = document.getElementById('dim' + dimIdx + 'Bar');
+  const valEl = document.getElementById('dim' + dimIdx + 'Val');
+  const lvlEl = document.getElementById('dim' + dimIdx + 'Level');
+
+  // 构建色带
+  const totalRange = thresholds.reduce((s, t) => {
+    const lo = t.min === -Infinity ? 0 : t.min;
+    const hi = t.max === Infinity ? lo + 1 : t.max;
+    return s + (hi - lo);
+  }, 0);
+
+  let html = '';
+  let activeIdx = -1;
+  thresholds.forEach((t, i) => {
+    const lo = t.min === -Infinity ? 0 : t.min;
+    const hi = t.max === Infinity ? lo + 1 : t.max;
+    const pct = ((hi - lo) / totalRange * 100).toFixed(1);
+    const isActive = value >= t.min && value < t.max;
+    if (isActive) activeIdx = i;
+    html += `<div class="dim-seg${isActive ? ' active' : ''}" style="width:${pct}%;background:${t.color}33;border-right:1px solid ${t.color}55">${t.label.substring(0,2)}</div>`;
+  });
+  barEl.innerHTML = html;
+
+  // 标记位置
+  if (activeIdx >= 0) {
+    const marker = document.createElement('div');
+    marker.className = 'dim-marker';
+    // 计算marker位置
+    let pos = 0;
+    for (let i = 0; i < activeIdx; i++) {
+      const lo = thresholds[i].min === -Infinity ? 0 : thresholds[i].min;
+      const hi = thresholds[i].max === Infinity ? lo + 1 : thresholds[i].max;
+      pos += (hi - lo) / totalRange * 100;
+    }
+    const t = thresholds[activeIdx];
+    const lo = t.min === -Infinity ? 0 : t.min;
+    const hi = t.max === Infinity ? lo + 1 : t.max;
+    pos += (value - lo) / (hi - lo) * ((hi - lo) / totalRange * 100);
+    marker.style.left = Math.min(Math.max(pos, 1), 99) + '%';
+    barEl.appendChild(marker);
+  }
+
+  const level = findLevel(thresholds, value);
+  valEl.textContent = (value > 0 ? '+' : '') + value.toFixed(2) + unit;
+  valEl.style.color = level.color;
+  lvlEl.textContent = level.label + ' → ' + (level.op || level.pos || '');
+  lvlEl.style.color = level.color;
+}
+
+function renderDim4Bar() {
+  const S = SNAP;
+  const barEl = document.getElementById('dim4Bar');
+  // PE色带
+  const peL = findLevel(DIM4_PE, S.pe);
+  const pbL = findLevel(DIM4_PB, S.pb);
+  // 用PE作为主色带
+  const thresholds = DIM4_PE;
+  const totalRange = thresholds.reduce((s, t) => s + ((t.max === 999 ? t.min + 2 : t.max) - t.min), 0);
+  let html = '';
+  let activeIdx = -1;
+  thresholds.forEach((t, i) => {
+    const hi = t.max === 999 ? t.min + 2 : t.max;
+    const pct = ((hi - t.min) / totalRange * 100).toFixed(1);
+    const isActive = S.pe >= t.min && S.pe < t.max;
+    if (isActive) activeIdx = i;
+    html += `<div class="dim-seg${isActive ? ' active' : ''}" style="width:${pct}%;background:${t.color}33;border-right:1px solid ${t.color}55">${t.label.substring(0,2)}</div>`;
+  });
+  barEl.innerHTML = html;
+
+  if (activeIdx >= 0) {
+    const marker = document.createElement('div');
+    marker.className = 'dim-marker';
+    let pos = 0;
+    for (let i = 0; i < activeIdx; i++) {
+      const hi = thresholds[i].max === 999 ? thresholds[i].min + 2 : thresholds[i].max;
+      pos += (hi - thresholds[i].min) / totalRange * 100;
+    }
+    const t = thresholds[activeIdx];
+    const hi = t.max === 999 ? t.min + 2 : t.max;
+    pos += (S.pe - t.min) / (hi - t.min) * ((hi - t.min) / totalRange * 100);
+    marker.style.left = Math.min(Math.max(pos, 1), 99) + '%';
+    barEl.appendChild(marker);
+  }
+
+  document.getElementById('dim4PE').textContent = S.pe.toFixed(1);
+  document.getElementById('dim4PE').style.color = peL.color;
+  document.getElementById('dim4PB').textContent = S.pb.toFixed(2);
+  document.getElementById('dim4PB').style.color = pbL.color;
+
+  const overallLabel = (peL.color === '#ef4444' || pbL.color === '#ef4444') ? '高估' :
+                       (peL.color === '#fbbf24' || pbL.color === '#fbbf24') ? '偏高' :
+                       (peL.color === '#4ade80' || pbL.color === '#4ade80') ? '合理' : '低估';
+  const overallColor = (peL.color === '#ef4444' || pbL.color === '#ef4444') ? '#ef4444' :
+                       (peL.color === '#fbbf24' || pbL.color === '#fbbf24') ? '#fbbf24' : '#00c87a';
+  document.getElementById('dim4Level').textContent = 'PE: ' + peL.label + ' / PB: ' + pbL.label;
+  document.getElementById('dim4Level').style.color = overallColor;
+}
+
+// ================================================================
+//  买 卖 执 行 清 单
+// ================================================================
+function renderChecklist() {
+  const S = SNAP;
+
+  // 买入条件（满足2项+）
+  const buyItems = [
+    {met: S.spread >= 2.00,    text: `股债利差 ≥ 2.00%（当前 ${S.spread.toFixed(2)}%）`},
+    {met: S.percentile >= 80,  text: `利差历史分位 ≥ 80%（当前 ${S.percentile}%）`},
+    {met: S.indexDivYield >= 4.30, text: `指数股息率 ≥ 4.30%（当前 ${S.indexDivYield.toFixed(2)}%）`},
+    {met: S.pe < 11 || S.pb < 1.60, text: `PE < 11倍（${S.pe}）或 PB < 1.60（${S.pb}）`}
+  ];
+  const buyMetCount = buyItems.filter(i => i.met).length;
+  let buyHtml = `<div style="font-size:12px;margin-bottom:8px;padding:4px 8px;border-radius:4px;background:${buyMetCount >= 2 ? 'rgba(0,200,122,.1)' : 'rgba(122,133,153,.08)'};color:${buyMetCount >= 2 ? 'var(--green)' : 'var(--sub)'}">已满足 ${buyMetCount}/4 项 ${buyMetCount >= 2 ? '✅ 可动手' : '⏳ 不足2项'}</div>`;
+  buyItems.forEach(i => {
+    buyHtml += `<div class="check-item"><span class="check-icon ${i.met ? 'check-met' : 'check-not'}">${i.met ? '✅' : '⬜'}</span><span>${i.text}</span></div>`;
+  });
+  document.getElementById('buyList').innerHTML = buyHtml;
+
+  // 加仓 / 重仓
+  const addItems = [
+    {met: S.spread >= 2.50 && S.percentile >= 85, text: `利差 ≥ 2.50% + 分位 ≥ 85%（${S.spread.toFixed(2)}% / ${S.percentile}%）`, type:'add'},
+    {met: S.indexDivYield >= 4.60, text: `股息率 ≥ 4.60%（当前 ${S.indexDivYield.toFixed(2)}%）`, type:'add'},
+    {met: S.pe < 10 && S.pb < 1.45, text: `估值双低：PE < 10（${S.pe}）、PB < 1.45（${S.pb}）`, type:'add'},
+    {met: S.spread >= 3.00, text: `利差 ≥ 3.00%（当前 ${S.spread.toFixed(2)}%）→ 重仓`, type:'heavy'},
+    {met: S.percentile >= 90, text: `分位 ≥ 90%（当前 ${S.percentile}%）→ 重仓`, type:'heavy'},
+    {met: S.indexDivYield >= 4.80, text: `股息率 ≥ 4.80%（当前 ${S.indexDivYield.toFixed(2)}%）→ 重仓`, type:'heavy'}
+  ];
+  let addHtml = '<div style="font-size:11px;color:var(--sub);margin-bottom:6px">🚀 加仓 | 💎 重仓</div>';
+  addItems.forEach(i => {
+    const icon = i.met ? (i.type === 'heavy' ? '💎' : '✅') : '⬜';
+    addHtml += `<div class="check-item"><span class="check-icon ${i.met ? 'check-met' : 'check-not'}">${icon}</span><span>${i.text}</span></div>`;
+  });
+  document.getElementById('addList').innerHTML = addHtml;
+
+  // 减仓 / 清仓
+  const sellItems = [
+    {met: S.spread < 1.20, text: `利差 < 1.20%（当前 ${S.spread.toFixed(2)}%）→ 减仓`, warn:true},
+    {met: S.percentile < 30, text: `分位 < 30%（当前 ${S.percentile}%）→ 减仓`, warn:true},
+    {met: S.indexDivYield < 3.80, text: `股息率 < 3.80%（当前 ${S.indexDivYield.toFixed(2)}%）→ 减仓`, warn:true},
+    {met: S.pe > 12 || S.pb > 1.70, text: `PE > 12（${S.pe}）或 PB > 1.70（${S.pb}）→ 减仓`, warn:true},
+    {met: S.spread < 0.50, text: `利差 < 0.50% → 清仓`, warn:true},
+    {met: S.percentile < 10, text: `分位 < 10% → 清仓`, warn:true}
+  ];
+  const sellMetCount = sellItems.filter(i => i.met).length;
+  let sellHtml = `<div style="font-size:12px;margin-bottom:8px;padding:4px 8px;border-radius:4px;background:${sellMetCount > 0 ? 'rgba(239,68,68,.1)' : 'rgba(122,133,153,.08)'};color:${sellMetCount > 0 ? 'var(--red)' : 'var(--sub)'}">触发 ${sellMetCount}/6 项 ${sellMetCount > 0 ? '⚠️ 需关注' : '✅ 暂无风险'}</div>`;
+  sellItems.forEach(i => {
+    sellHtml += `<div class="check-item"><span class="check-icon ${i.met ? 'check-warn' : 'check-not'}">${i.met ? '⚠️' : '⬜'}</span><span>${i.text}</span></div>`;
+  });
+  document.getElementById('sellList').innerHTML = sellHtml;
+}
+
+// ================================================================
+//  图 表
+// ================================================================
+function renderSpreadChart() {
+  const labels = bondMonthly.map(d => d.date);
+  const bondYs = bondMonthly.map(d => d.y);
+  const divYs  = divYieldMonthly.map(d => d.y);
+  const spreads = spreadMonthly.map(d => d.spread);
+
+  const ctx = document.getElementById('spreadChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '指数股息率(%)',
+          data: divYs,
+          borderColor: '#00c87a',
+          backgroundColor: 'rgba(0,200,122,.06)',
+          tension: .4, fill: false, borderWidth: 2, pointRadius: 3
+        },
+        {
+          label: '10年国债(%)',
+          data: bondYs,
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,.04)',
+          tension: .4, fill: false, borderWidth: 2, pointRadius: 3
+        },
+        {
+          label: '股债利差(pp)',
+          data: spreads,
+          borderColor: '#fbbf24',
+          backgroundColor: 'rgba(251,191,36,.1)',
+          tension: .4, fill: true, borderWidth: 2.5, pointRadius: 3,
+          yAxisID: 'y2'
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: {mode:'index',intersect:false},
+      plugins: {
+        legend: {labels:{color:'#7a8599',font:{size:11},usePointStyle:true}},
+        tooltip: {
+          backgroundColor:'#1c2230',borderColor:'#2a3040',borderWidth:1,
+          titleColor:'#e4e8f0',bodyColor:'#7a8599',
+          callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y?.toFixed(2)??'-'}%`}
+        },
+        annotation: {
+          annotations: {
+            line3: {type:'line',yMin:3,yMax:3,yScaleID:'y2',borderColor:'rgba(0,168,107,.5)',borderWidth:1.5,borderDash:[6,3],label:{content:'极度低估 3%',display:true,color:'#00a86b',font:{size:10},position:'end',backgroundColor:'transparent'}},
+            line25:{type:'line',yMin:2.5,yMax:2.5,yScaleID:'y2',borderColor:'rgba(0,200,122,.4)',borderWidth:1,borderDash:[4,4],label:{content:'深度低估',display:true,color:'#00c87a',font:{size:9},position:'end',backgroundColor:'transparent'}},
+            line2: {type:'line',yMin:2,yMax:2,yScaleID:'y2',borderColor:'rgba(251,191,36,.6)',borderWidth:1.5,borderDash:[6,3],label:{content:'合理偏低 2%',display:true,color:'#fbbf24',font:{size:10},position:'end',backgroundColor:'transparent'}},
+            line12:{type:'line',yMin:1.2,yMax:1.2,yScaleID:'y2',borderColor:'rgba(249,115,22,.4)',borderWidth:1,borderDash:[4,4],label:{content:'合理中枢',display:true,color:'#f97316',font:{size:9},position:'end',backgroundColor:'transparent'}},
+            line05:{type:'line',yMin:.5,yMax:.5,yScaleID:'y2',borderColor:'rgba(239,68,68,.4)',borderWidth:1,borderDash:[4,4],label:{content:'偏贵',display:true,color:'#ef4444',font:{size:9},position:'end',backgroundColor:'transparent'}}
+          }
+        }
+      },
+      scales: {
+        x:{grid:{color:'rgba(42,48,64,.4)'},ticks:{color:'#7a8599',font:{size:10},maxRotation:30}},
+        y:{position:'left',grid:{color:'rgba(42,48,64,.4)'},ticks:{color:'#7a8599',font:{size:10},callback:v=>v.toFixed(1)+'%'},title:{display:true,text:'收益率(%)',color:'#7a8599',font:{size:10}}},
+        y2:{position:'right',grid:{drawOnChartArea:false},ticks:{color:'#fbbf24',font:{size:10},callback:v=>v.toFixed(1)+'pp'},title:{display:true,text:'利差(pp)',color:'#fbbf24',font:{size:10}}}
+      }
+    }
+  });
+}
+
+function renderGauge() {
+  const S = SNAP;
+  const ctx = document.getElementById('gaugeChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [20, 30, 30, 20, 50],
+        backgroundColor: [
+          'rgba(239,68,68,.6)',   // 高估
+          'rgba(249,115,22,.5)',  // 偏贵
+          'rgba(251,191,36,.5)',  // 中性
+          'rgba(0,200,122,.5)',   // 低估
+          'rgba(0,168,107,.6)'   // 极低
+        ],
+        borderWidth: 0, circumference: 180, rotation: 270
+      }]
+    },
+    options: {
+      responsive: true, cutout: '72%',
+      plugins: {legend:{display:false},tooltip:{enabled:false}}
+    }
+  });
+  document.getElementById('gaugeVal').textContent = (S.spread > 0 ? '+' : '') + S.spread.toFixed(2) + '%';
+  document.getElementById('gaugePct').textContent = '历史分位：' + S.percentile + '%';
+}
+
+function renderPriceChart() {
+  const ctx = document.getElementById('priceChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: etfPrices.map(d => d.date),
+      datasets: [{
+        label: '512890 价格（元）',
+        data: etfPrices.map(d => d.p),
+        borderColor: '#00c87a',
+        backgroundColor: 'rgba(0,200,122,.06)',
+        fill: true, tension: .4, borderWidth: 2, pointRadius: 3,
+        pointBackgroundColor: '#00c87a'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {labels:{color:'#7a8599',font:{size:11}}},
+        tooltip: {backgroundColor:'#1c2230',borderColor:'#2a3040',borderWidth:1,titleColor:'#e4e8f0',bodyColor:'#7a8599'}
+      },
+      scales: {
+        x:{grid:{color:'rgba(42,48,64,.3)'},ticks:{color:'#7a8599',font:{size:10},maxRotation:30}},
+        y:{grid:{color:'rgba(42,48,64,.3)'},ticks:{color:'#7a8599',font:{size:10},callback:v=>'¥'+v.toFixed(3)},title:{display:true,text:'价格（元）',color:'#7a8599',font:{size:10}}}
+      }
+    }
+  });
+}
+
+function renderDivTable() {
+  const tbody = document.getElementById('divTableBody');
+  tbody.innerHTML = dividends.slice(0,8).map(d => {
+    const yld = ((d.div / d.px) * 100 * 4).toFixed(2);
+    return `<tr><td>${d.reg}</td><td style="color:var(--green);font-weight:600">¥${d.div}</td><td>${d.ex}</td><td><span class="tag tag-buy">${yld}%</span></td></tr>`;
+  }).join('');
+}
+
+// ================================================================
+//  飞 书 通 知 模 块
+// ================================================================
+const FEISHU_STORAGE_KEY = 'dividend_etf_feishu_v1';
+let feishuMonitorTimer = null, isFeishuMonitoring = false;
+
+function initFeishuConfig() {
+  const saved = localStorage.getItem(FEISHU_STORAGE_KEY);
+  if (saved) {
+    try {
+      const cfg = JSON.parse(saved);
+      if (cfg.webhook) document.getElementById('feishuWebhookInput').value = cfg.webhook;
+      if (cfg.threshold) document.getElementById('feishuThresholdInput').value = cfg.threshold;
+      if (cfg.interval) document.getElementById('feishuIntervalSelect').value = cfg.interval;
+      document.getElementById('feishuBadge').textContent = '● 已配置';
+      document.getElementById('feishuBadge').className = 'monitor-badge monitor-on';
+      addFeishuLog('info', '✅ 已加载飞书配置');
+      if (cfg.autoMonitor) setTimeout(() => startFeishuMonitor(), 500);
+    } catch(e) {}
+  }
+}
+
+function saveFeishuConfig() {
+  const webhook = document.getElementById('feishuWebhookInput').value.trim();
+  const threshold = parseFloat(document.getElementById('feishuThresholdInput').value) || 2.0;
+  const interval = parseInt(document.getElementById('feishuIntervalSelect').value) || 60;
+  if (!webhook) { showFeishuAlert('error','⚠️ 请先填写飞书Webhook地址！'); return; }
+  localStorage.setItem(FEISHU_STORAGE_KEY, JSON.stringify({webhook,threshold,interval,autoMonitor:isFeishuMonitoring}));
+  document.getElementById('feishuBadge').textContent = '● 已配置';
+  document.getElementById('feishuBadge').className = 'monitor-badge monitor-on';
+  showFeishuAlert('success','✅ 飞书配置已保存');
+  addFeishuLog('info', `💾 阈值: ≥${threshold}% | 间隔: ${interval}分钟`);
+}
+
+async function sendFeishuMsg(content) {
+  const webhook = document.getElementById('feishuWebhookInput').value.trim();
+  if (!webhook) { showFeishuAlert('error','⚠️ 请先填写飞书Webhook地址！'); return false; }
+  const body = JSON.stringify({
+    msg_type: 'text',
+    content: { text: content }
+  });
+  try {
+    const resp = await fetch(webhook, {method:'POST',headers:{'Content-Type':'application/json'},body:body});
+    const data = await resp.json();
+    if (data.code === 0) { addFeishuLog('success',`📨 飞书推送成功`); return true; }
+    else { addFeishuLog('error',`❌ 飞书推送失败: ${JSON.stringify(data)}`); showFeishuAlert('error',`❌ 推送失败：${data.msg||JSON.stringify(data)}`); return false; }
+  } catch(e) { addFeishuLog('error',`❌ 网络错误: ${e.message}`); showFeishuAlert('error',`❌ ${e.message}`); return false; }
+}
+
+async function sendFeishuTestMsg() {
+  const S = SNAP;
+  showFeishuAlert('info','⏳ 发送中...');
+  const content = `【红利低波ETF】测试消息\n\n当前数据（${S.updateDate}）\n股债利差：${S.spread}%\n利差分位：${S.percentile}%\n指数股息率：${S.indexDivYield}%\nPE-TTM：${S.pe}倍\nPB：${S.pb}\n\n当利差 ≥ ${document.getElementById('feishuThresholdInput').value||2.0}% 时推送提醒`;
+  const ok = await sendFeishuMsg(content);
+  if (ok) showFeishuAlert('success','✅ 飞书测试消息发送成功！');
+}
+
+async function runFeishuCheck() {
+  const threshold = parseFloat(document.getElementById('feishuThresholdInput').value) || 2.0;
+  const S = SNAP;
+  const now = new Date().toLocaleString('zh-CN');
+  document.getElementById('feishuLastCheckInfo').textContent = '上次：' + now;
+  addFeishuLog(S.spread >= threshold ? 'success' : 'info', `🔍 [${now}] 利差: ${S.spread}% | 阈值: ≥${threshold}% | ${S.spread >= threshold ? '⚡ 触发！' : '未达到'}`);
+  
+  if (S.spread >= threshold) {
+    const d1 = findLevel(DIM1, S.spread);
+    const content = `【${d1.label}信号】红利低波ETF\n\n时间：${now}\n股债利差：${S.spread}%（${d1.label}）\n利差分位：${S.percentile}%\n指数股息率：${S.indexDivYield}%\nPE-TTM：${S.pe}倍\nPB：${S.pb}\n\n操作建议：${d1.op}\n\n⚠️ 仅供参考，不构成投资建议`;
+    const ok = await sendFeishuMsg(content);
+    if (ok) {
+      showFeishuAlert('success', `🟢 已发送${d1.label}提醒！利差 ${S.spread}%`);
+      addFeishuLog('warn','⏸️ 触发后暂停2小时');
+      if (feishuMonitorTimer) clearTimeout(feishuMonitorTimer);
+      feishuMonitorTimer = setTimeout(scheduleFeishuNextCheck, 120*60*1000);
+      return;
+    }
+  }
+  scheduleFeishuNextCheck();
+}
+
+function scheduleFeishuNextCheck() {
+  if (!isFeishuMonitoring) return;
+  const interval = parseInt(document.getElementById('feishuIntervalSelect').value) || 60;
+  const nextTime = new Date(Date.now() + interval*60*1000);
+  document.getElementById('feishuNextCheckInfo').textContent = '下次：' + nextTime.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+  feishuMonitorTimer = setTimeout(runFeishuCheck, interval*60*1000);
+}
+
+function startFeishuMonitor() {
+  const webhook = document.getElementById('feishuWebhookInput').value.trim();
+  if (!webhook) { showFeishuAlert('error','⚠️ 请先填写飞书Webhook地址！'); return; }
+  isFeishuMonitoring = true; saveFeishuConfig();
+  document.getElementById('feishuMonitorBtn').textContent = '⏹ 停止';
+  document.getElementById('feishuMonitorBtn').className = 'btn btn-feishu-test';
+  document.getElementById('feishuBadge').textContent = '● 监测中';
+  document.getElementById('feishuBadge').className = 'monitor-badge monitor-on';
+  document.getElementById('feishuNotifyLog').style.display = 'block';
+  addFeishuLog('success', `✅ 飞书监测已开启 | 阈值: ≥${document.getElementById('feishuThresholdInput').value||2.0}%`);
+  runFeishuCheck();
+}
+
+function stopFeishuMonitor() {
+  isFeishuMonitoring = false;
+  if (feishuMonitorTimer) { clearTimeout(feishuMonitorTimer); feishuMonitorTimer = null; }
+  document.getElementById('feishuMonitorBtn').textContent = '▶ 开启';
+  document.getElementById('feishuMonitorBtn').className = 'btn btn-feishu';
+  document.getElementById('feishuBadge').textContent = '● 未开启';
+  document.getElementById('feishuBadge').className = 'monitor-badge monitor-off';
+  document.getElementById('feishuNextCheckInfo').textContent = '下次：—';
+  addFeishuLog('warn','⏹ 飞书监测已停止');
+  const saved = localStorage.getItem(FEISHU_STORAGE_KEY);
+  if (saved) { try { const cfg=JSON.parse(saved); cfg.autoMonitor=false; localStorage.setItem(FEISHU_STORAGE_KEY,JSON.stringify(cfg)); } catch(e){} }
+}
+
+function toggleFeishuMonitor() { isFeishuMonitoring ? stopFeishuMonitor() : startFeishuMonitor(); }
+
+function showFeishuAlert(type, msg) {
+  const el = document.getElementById('feishuAlertStatus');
+  el.className = 'alert-status ' + type;
+  el.innerHTML = msg; el.style.display = 'block';
+  if (type === 'success' || type === 'info') setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+function addFeishuLog(type, msg) {
+  const log = document.getElementById('feishuNotifyLog');
+  log.style.display = 'block';
+  const line = document.createElement('div');
+  line.className = `log-line ${type==='success'?'success-log':type==='error'?'error-log':type==='warn'?'warn-log':''}`;
+  line.textContent = msg;
+  log.appendChild(line);
+  log.scrollTop = log.scrollHeight;
+  while (log.children.length > 100) log.removeChild(log.firstChild);
+}
+
+// ================================================================
+//  初 始 化
+// ================================================================
+window.addEventListener('DOMContentLoaded', () => {
+  renderKPI();
+  renderDimensions();
+  renderChecklist();
+  renderSpreadChart();
+  renderGauge();
+  renderPriceChart();
+  renderDivTable();
+  initFeishuConfig();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+name: 更新红利低波ETF看板
+
+# 定时触发：每个工作日 10:00 北京时间 (UTC+8 = UTC 02:00)
+on:
+  schedule:
+    - cron: '0 2 * * 1-5'   # 周一至周五 UTC 02:00 = 北京时间 10:00
+  workflow_dispatch:      # 支持手动触发
+
+permissions:
+  contents: write      # 需要写权限来 push 更新后的 HTML
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout 仓库
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: pip install urllib3 requests
+
+      - name: 运行数据更新脚本
+        env:
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          NOTIFY_THRESHOLD: ${{ secrets.NOTIFY_THRESHOLD }}
+        run: |
+          THRESHOLD="${NOTIFY_THRESHOLD:-2.5}"
+          python update_dashboard.py --notify --threshold "$THRESHOLD"
+
+      - name: 提交并更新 HTML
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dividend_etf_dashboard.html
+          if git diff --cached --quiet; then
+            echo "无变化，跳过提交"
+          else
+            git commit -m "chore: 自动更新看板数据 $(date +'%Y-%m-%d')"
+            git push
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

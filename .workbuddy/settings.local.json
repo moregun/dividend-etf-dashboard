@@ -1,0 +1,14 @@
+{
+  "enabledPlugins": {
+    "financial-analysis@cb_teams_marketplace": false,
+    "investment-banking@cb_teams_marketplace": false,
+    "equity-research@cb_teams_marketplace": false,
+    "private-equity@cb_teams_marketplace": false,
+    "wealth-management@cb_teams_marketplace": false,
+    "lseg@cb_teams_marketplace": false,
+    "spglobal@cb_teams_marketplace": false,
+    "finance-data@cb_teams_marketplace": false,
+    "trading-agent@cb_teams_marketplace": false,
+    "a-share-analysis@cb_teams_marketplace": false
+  }
+}
