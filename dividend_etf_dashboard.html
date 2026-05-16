@@ -94,14 +94,6 @@ tr:hover td{background:rgba(59,130,246,.04)}
 .gauge-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 0}
 .gauge-center{text-align:center;margin-top:-8px}
 
-/* Feishu */
-.feishu-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:18px;position:relative;overflow:hidden}
-.feishu-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#6b5bff,#3370ff)}
-.feishu-title{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:4px}
-.feishu-sub{font-size:11px;color:var(--sub);margin-bottom:14px}
-.btn-feishu{background:#6b5bff;color:#fff}.btn-feishu:hover{background:#5a4de6}
-.btn-feishu-test{background:rgba(107,91,255,.12);color:#6b5bff;border:1px solid #6b5bff}.btn-feishu-test:hover{background:rgba(107,91,255,.22)}
-
 /* Data source */
 .source-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:18px}
 .source-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
@@ -269,43 +261,6 @@ tr:hover td{background:rgba(59,130,246,.04)}
     <div class="source-item"><strong>中证红利低波指数</strong><br>理杏仁、乌龟量化、天天基金指数估值</div>
     <div class="source-item"><strong>512890基金估值/股息</strong><br>华泰柏瑞基金官网、集思录</div>
   </div>
-</div>
-
-<!-- ===== 飞书通知 ===== -->
-<div class="feishu-card">
-  <div class="feishu-title">
-    <span style="font-size:18px">📢</span> 飞书机器人通知
-    <span id="feishuBadge" class="monitor-badge monitor-off">● 未配置</span>
-  </div>
-  <div class="feishu-sub">利差/分位/股息率/估值达到设定阈值时，自动推送飞书消息</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-bottom:12px">
-    <div class="form-group">
-      <label>🔗 飞书 Webhook 地址</label>
-      <div style="display:flex;gap:4px;align-items:center">
-        <input type="password" id="feishuWebhookInput" placeholder="粘贴 Webhook 地址..." style="flex:1">
-        <button onclick="toggleWebhookVisibility()" style="background:var(--card2);border:1px solid var(--border);color:var(--sub);padding:4px 8px;border-radius:4px;font-size:11px;cursor:pointer">👁</button>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>⚡ 触发阈值（利差 ≥ X%）</label>
-      <input type="number" id="feishuThresholdInput" value="2.5" min="0" max="10" step="0.1">
-    </div>
-    <div style="display:flex;gap:6px;flex-direction:column">
-      <button class="btn btn-save" onclick="saveFeishuConfig()">💾 保存</button>
-      <button class="btn btn-feishu-test" onclick="sendFeishuTestMsg()">🧪 测试</button>
-    </div>
-  </div>
-  <div class="monitor-row">
-    <span style="font-size:12px;color:var(--sub)">自动监测：</span>
-    <button class="btn btn-feishu" id="feishuMonitorBtn" onclick="toggleFeishuMonitor()">▶ 开启</button>
-    <div style="font-size:11px;color:var(--sub)">间隔：<select id="feishuIntervalSelect" style="background:#0b0e14;border:1px solid var(--border);color:var(--text);padding:2px 6px;border-radius:4px;font-size:11px">
-      <option value="60" selected>1小时</option><option value="1440">1天</option><option value="10080">1周</option>
-    </select></div>
-    <div style="font-size:11px;color:var(--sub)" id="feishuLastCheckInfo">上次：—</div>
-    <div style="font-size:11px;color:var(--sub)" id="feishuNextCheckInfo">下次：—</div>
-  </div>
-  <div class="alert-status" id="feishuAlertStatus"></div>
-  <div class="notify-log" id="feishuNotifyLog"></div>
 </div>
 
 <div class="footer">
@@ -757,148 +712,6 @@ function renderDivTable() {
 }
 
 // ================================================================
-//  飞 书 通 知 模 块
-// ================================================================
-const FEISHU_STORAGE_KEY = 'dividend_etf_feishu_v1';
-let feishuMonitorTimer = null, isFeishuMonitoring = false;
-
-function initFeishuConfig() {
-  const saved = localStorage.getItem(FEISHU_STORAGE_KEY);
-  if (saved) {
-    try {
-      const cfg = JSON.parse(saved);
-      if (cfg.webhook) {
-        const el = document.getElementById('feishuWebhookInput');
-        el.value = cfg.webhook;
-        el.placeholder = '已配置（点击👁查看）';
-      }
-      if (cfg.threshold) document.getElementById('feishuThresholdInput').value = cfg.threshold;
-      if (cfg.interval) document.getElementById('feishuIntervalSelect').value = cfg.interval;
-      document.getElementById('feishuBadge').textContent = '● 已配置';
-      document.getElementById('feishuBadge').className = 'monitor-badge monitor-on';
-      addFeishuLog('info', '✅ 已加载飞书配置');
-      if (cfg.autoMonitor) setTimeout(() => startFeishuMonitor(), 500);
-    } catch(e) {}
-  }
-}
-
-function toggleWebhookVisibility() {
-  const el = document.getElementById('feishuWebhookInput');
-  el.type = el.type === 'password' ? 'text' : 'password';
-}
-
-function saveFeishuConfig() {
-  const webhook = document.getElementById('feishuWebhookInput').value.trim();
-  const threshold = parseFloat(document.getElementById('feishuThresholdInput').value) || 2.0;
-  const interval = parseInt(document.getElementById('feishuIntervalSelect').value) || 60;
-  if (!webhook) { showFeishuAlert('error','⚠️ 请先填写飞书Webhook地址！'); return; }
-  localStorage.setItem(FEISHU_STORAGE_KEY, JSON.stringify({webhook,threshold,interval,autoMonitor:isFeishuMonitoring}));
-  document.getElementById('feishuBadge').textContent = '● 已配置';
-  document.getElementById('feishuBadge').className = 'monitor-badge monitor-on';
-  showFeishuAlert('success','✅ 飞书配置已保存');
-  addFeishuLog('info', `💾 阈值: ≥${threshold}% | 间隔: ${interval}分钟`);
-}
-
-async function sendFeishuMsg(content) {
-  const webhook = document.getElementById('feishuWebhookInput').value.trim();
-  if (!webhook) { showFeishuAlert('error','⚠️ 请先填写飞书Webhook地址！'); return false; }
-  const body = JSON.stringify({
-    msg_type: 'text',
-    content: { text: content }
-  });
-  try {
-    const resp = await fetch(webhook, {method:'POST',headers:{'Content-Type':'application/json'},body:body});
-    const data = await resp.json();
-    if (data.code === 0) { addFeishuLog('success',`📨 飞书推送成功`); return true; }
-    else { addFeishuLog('error',`❌ 飞书推送失败: ${JSON.stringify(data)}`); showFeishuAlert('error',`❌ 推送失败：${data.msg||JSON.stringify(data)}`); return false; }
-  } catch(e) { addFeishuLog('error',`❌ 网络错误: ${e.message}`); showFeishuAlert('error',`❌ ${e.message}`); return false; }
-}
-
-async function sendFeishuTestMsg() {
-  const S = SNAP;
-  showFeishuAlert('info','⏳ 发送中...');
-  const content = `【红利低波ETF】测试消息\n\n当前数据（${S.updateDate}）\n股债利差：${S.spread}%\n利差分位：${S.percentile}%\n指数股息率：${S.indexDivYield}%\nPE-TTM：${S.pe}倍\nPB：${S.pb}\n\n当利差 ≥ ${document.getElementById('feishuThresholdInput').value||2.0}% 时推送提醒`;
-  const ok = await sendFeishuMsg(content);
-  if (ok) showFeishuAlert('success','✅ 飞书测试消息发送成功！');
-}
-
-async function runFeishuCheck() {
-  const threshold = parseFloat(document.getElementById('feishuThresholdInput').value) || 2.0;
-  const S = SNAP;
-  const now = new Date().toLocaleString('zh-CN');
-  document.getElementById('feishuLastCheckInfo').textContent = '上次：' + now;
-  addFeishuLog(S.spread >= threshold ? 'success' : 'info', `🔍 [${now}] 利差: ${S.spread}% | 阈值: ≥${threshold}% | ${S.spread >= threshold ? '⚡ 触发！' : '未达到'}`);
-  
-  if (S.spread >= threshold) {
-    const d1 = findLevel(DIM1, S.spread);
-    const content = `【${d1.label}信号】红利低波ETF\n\n时间：${now}\n股债利差：${S.spread}%（${d1.label}）\n利差分位：${S.percentile}%\n指数股息率：${S.indexDivYield}%\nPE-TTM：${S.pe}倍\nPB：${S.pb}\n\n操作建议：${d1.op}\n\n⚠️ 仅供参考，不构成投资建议`;
-    const ok = await sendFeishuMsg(content);
-    if (ok) {
-      showFeishuAlert('success', `🟢 已发送${d1.label}提醒！利差 ${S.spread}%`);
-      addFeishuLog('warn','⏸️ 触发后暂停2小时');
-      if (feishuMonitorTimer) clearTimeout(feishuMonitorTimer);
-      feishuMonitorTimer = setTimeout(scheduleFeishuNextCheck, 120*60*1000);
-      return;
-    }
-  }
-  scheduleFeishuNextCheck();
-}
-
-function scheduleFeishuNextCheck() {
-  if (!isFeishuMonitoring) return;
-  const interval = parseInt(document.getElementById('feishuIntervalSelect').value) || 60;
-  const nextTime = new Date(Date.now() + interval*60*1000);
-  document.getElementById('feishuNextCheckInfo').textContent = '下次：' + nextTime.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
-  feishuMonitorTimer = setTimeout(runFeishuCheck, interval*60*1000);
-}
-
-function startFeishuMonitor() {
-  const webhook = document.getElementById('feishuWebhookInput').value.trim();
-  if (!webhook) { showFeishuAlert('error','⚠️ 请先填写飞书Webhook地址！'); return; }
-  isFeishuMonitoring = true; saveFeishuConfig();
-  document.getElementById('feishuMonitorBtn').textContent = '⏹ 停止';
-  document.getElementById('feishuMonitorBtn').className = 'btn btn-feishu-test';
-  document.getElementById('feishuBadge').textContent = '● 监测中';
-  document.getElementById('feishuBadge').className = 'monitor-badge monitor-on';
-  document.getElementById('feishuNotifyLog').style.display = 'block';
-  addFeishuLog('success', `✅ 飞书监测已开启 | 阈值: ≥${document.getElementById('feishuThresholdInput').value||2.0}%`);
-  runFeishuCheck();
-}
-
-function stopFeishuMonitor() {
-  isFeishuMonitoring = false;
-  if (feishuMonitorTimer) { clearTimeout(feishuMonitorTimer); feishuMonitorTimer = null; }
-  document.getElementById('feishuMonitorBtn').textContent = '▶ 开启';
-  document.getElementById('feishuMonitorBtn').className = 'btn btn-feishu';
-  document.getElementById('feishuBadge').textContent = '● 未开启';
-  document.getElementById('feishuBadge').className = 'monitor-badge monitor-off';
-  document.getElementById('feishuNextCheckInfo').textContent = '下次：—';
-  addFeishuLog('warn','⏹ 飞书监测已停止');
-  const saved = localStorage.getItem(FEISHU_STORAGE_KEY);
-  if (saved) { try { const cfg=JSON.parse(saved); cfg.autoMonitor=false; localStorage.setItem(FEISHU_STORAGE_KEY,JSON.stringify(cfg)); } catch(e){} }
-}
-
-function toggleFeishuMonitor() { isFeishuMonitoring ? stopFeishuMonitor() : startFeishuMonitor(); }
-
-function showFeishuAlert(type, msg) {
-  const el = document.getElementById('feishuAlertStatus');
-  el.className = 'alert-status ' + type;
-  el.innerHTML = msg; el.style.display = 'block';
-  if (type === 'success' || type === 'info') setTimeout(() => { el.style.display = 'none'; }, 5000);
-}
-
-function addFeishuLog(type, msg) {
-  const log = document.getElementById('feishuNotifyLog');
-  log.style.display = 'block';
-  const line = document.createElement('div');
-  line.className = `log-line ${type==='success'?'success-log':type==='error'?'error-log':type==='warn'?'warn-log':''}`;
-  line.textContent = msg;
-  log.appendChild(line);
-  log.scrollTop = log.scrollHeight;
-  while (log.children.length > 100) log.removeChild(log.firstChild);
-}
-
-// ================================================================
 //  初 始 化
 // ================================================================
 window.addEventListener('DOMContentLoaded', () => {
@@ -909,7 +722,6 @@ window.addEventListener('DOMContentLoaded', () => {
   renderGauge();
   renderPriceChart();
   renderDivTable();
-  initFeishuConfig();
 });
 </script>
 </body>
