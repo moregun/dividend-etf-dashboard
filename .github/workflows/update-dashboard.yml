@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write      # 需要写权限来 push 更新后的 HTML
 
+env:
+  # 强制使用 Node.js 24，消除弃用警告
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   update:
     runs-on: ubuntu-latest
